@@ -9,16 +9,16 @@ API_URL                = 'https://api.greenapi.com'
 INSTANCE_ID            = ''
 API_TOKEN              = ''
 
-# ---- Group Names ----
-# Enter the group names exactly as they appear in WhatsApp.
-SOURCE_GROUP_NAME      = ''   # exact name of the prayer times source group
-DESTINATION_GROUP_NAME = ''   # exact name of your group
+# ---- Groups (pick ONE way: names OR chat ids) ----
+SOURCE_GROUP_NAME       = ''   # exact WhatsApp group title, or leave blank if using id below
+DESTINATION_GROUP_NAME  = ''
 
-# ---- Trigger keyword ----
-# The bot will forward any message that contains this exact Arabic phrase.
-PRAYER_KEYWORD         = 'مواقيت الصلاة بحسب مكتب الوكيل الشرعي'
+# Paste JIDs from Green API (group info / console) if name matching fails:
+SOURCE_GROUP_CHAT_ID       = ''   # e.g. 120363123456789012@g.us
+DESTINATION_GROUP_CHAT_ID  = ''
 
-# ---- Bot behavior ----
-# How many seconds to wait between checking for new messages.
-# Green API HTTP requests are fast, 15 seconds is a good default.
-POLL_INTERVAL          = 15
+# Prints each incoming/outgoing message event and whether chatId matches source (turn off once fixed)
+MIRROR_DEBUG = True
+
+# Remove http(s) and www.… links from mirrored text and image/video captions (plain text only)
+STRIP_LINKS_FROM_TEXT = True

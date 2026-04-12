@@ -1,84 +1,35 @@
-# WhatsApp Bot — Beta v2.0
+# WhatsApp group mirror
 
-An automated WhatsApp bot that runs in the background, monitors your groups, and handles several Islamic daily/weekly tasks. No browser or phone required to be online once configured via **Green API**.
-
----
-
-## What the bot does
-
-| Feature | How it works |
-|---|---|
-| **Prayer times forwarding** | Polls the source group every 15 seconds. When a message containing the exact Arabic prayer-times phrase appears, it sends the attached image (if any) and text to the destination group via Green API. |
-| **Hijri calendar** | On startup, and once per day at midnight, it calls the Aladhan API for Beirut and checks today's Hijri date against 40+ hardcoded Shia Islamic events. Prints the event name to the console. |
-| **Dua Kumayl reminder** | Every Thursday at 8:00 PM — prints a reminder to the console (sending will be added). |
-| **Dua Tawassul reminder** | Every Tuesday at 8:00 PM — prints a reminder to the console (sending will be added). |
+Re-sends every new message from a **source** WhatsApp group to a **destination** group using [Green API](https://green-api.com/). Messages look like normal sends from your linked number (not “Forwarded”). Optional: strip `http(s)` / `www.` links from text and captions (`STRIP_LINKS_FROM_TEXT` in `config.py`).
 
 ---
 
-## Project structure
+## Setup
 
-```
-whatsapp-bot/
-│
-├── index.py            ← START HERE  — runs the bot
-├── config.py           ← EDIT THIS   — your Green API credentials and group names
-├── requirements.txt    ← INSTALL     — Python dependencies
-│
-└── bot/                ← Internal modules (you don't normally touch these)
-    ├── __init__.py     — marks the folder as a Python package
-    ├── calendar.py     — Hijri date logic + events dictionary
-    ├── scheduler.py    — Thursday/Tuesday reminders + daily calendar job
-    └── forwarder.py    — API polling and forwarding logic
-```
+1. Create a Green API instance, link WhatsApp, copy `INSTANCE_ID`, `apiTokenInstance`, and host URL from the console.
+2. `pip install -r requirements.txt`
+3. Copy `config.example.py` → `config.py` and fill in credentials and **exact** group names as shown in WhatsApp.
+4. In the Green API console: enable **incoming messages and files**, and **messages sent from the phone** (otherwise your own test messages in the source group never appear in the queue). **Do not** set a custom webhook if you use this script’s polling.
+5. Run: `python index.py`
 
 ---
 
-## Quick start
+## Files
 
-### 1. Register for Green API
-1. Go to [Green-API.com](https://green-api.com/).
-2. Create an account and create an instance.
-3. Link your WhatsApp by scanning the QR code in your dashboard.
-4. Note your `INSTANCE_ID` and `API_TOKEN`.
+| File | Role |
+|------|------|
+| `index.py` | Starts the bot |
+| `config.py` | Your secrets and group names (not in git) |
+| `bot/forwarder.py` | Green API queue + mirror logic |
 
-### 2. Install Python dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Edit config.py
-Open `config.py` and fill in your credentials and exact group names:
-```python
-INSTANCE_ID            = '1234567890'
-API_TOKEN              = 'abc123def456ghi789jkl'
-
-SOURCE_GROUP_NAME      = 'Prayer Times Group'   # exact group that posts prayer times
-DESTINATION_GROUP_NAME = 'Family Group'          # exact group to forward them to
-```
-
-### 4. Run the bot
-```bash
-python index.py
-```
-- The bot will automatically pull the chat IDs based on the group names you provided.
-- Press **Ctrl+C** to stop.
+**Python 3.10+**
 
 ---
 
-## Where to go when you want to change something
+## If it “doesn’t work”
 
-| What you want to change | File to open |
-|---|---|
-| Green API creds, Group names, scan interval, keyword | `config.py` |
-| Add/remove Islamic events from the calendar | `bot/calendar.py` → edit the `HIJRI_EVENTS` dict |
-| Change when duas are sent, or add new scheduled tasks | `bot/scheduler.py` → edit `setup_schedule()` |
-| Change how messages are detected or forwarded | `bot/forwarder.py` → edit `check_source_group()` |
-| Change startup order | `index.py` |
-
----
-
-## Requirements
-
-- Python 3.8+
-- Active internet connection
-- A linked Green API account (Free or Developer plan should be sufficient)
+- Turn on **incoming messages and files** in the Green API console (required for other people’s messages).
+- The linked WhatsApp account must be in **both** groups.
+- Run with `MIRROR_DEBUG = True` in `config.py`: you should see `[debug] queue: incomingMessageReceived …` when someone writes in the source group. If you see **nothing**, the queue is empty (wrong instance, custom webhook set, or webhooks disabled).
+- If you see `match=False`, the chat id from WhatsApp does not match the resolved source id: set **`SOURCE_GROUP_CHAT_ID`** / **`DESTINATION_GROUP_CHAT_ID`** to the exact `@g.us` values from the Green API group info.
+- Watch lines starting with `[API Error]` or `[Mirror]`.
