@@ -11,6 +11,7 @@ from collections import deque
 
 import requests
 import settings as config
+from bot.dedupe import should_send_outgoing_text
 
 _MAX_SEEN_IDS = 5000
 _seen_order: deque[str] = deque()
@@ -227,6 +228,19 @@ def send_text_message(chat_id: str, text: str) -> bool:
         return False
 
 
+def send_text_message_dedup(chat_id: str, text: str, source: str = "") -> bool:
+    payload = (text or "").strip()
+    if not payload:
+        return True
+    if not should_send_outgoing_text(payload):
+        if source:
+            print(f"  [Dedupe] skipped duplicate message from {source}.")
+        else:
+            print("  [Dedupe] skipped duplicate message.")
+        return True
+    return send_text_message(chat_id, payload)
+
+
 def send_location(
     chat_id: str,
     latitude: float,
@@ -334,14 +348,14 @@ def mirror_message_as_new(body: dict, dest_id: str) -> bool:
         text = _maybe_strip_links(raw)
         if not text:
             return True  # only links / empty after strip — nothing to send
-        return send_text_message(dest_id, format_outgoing_message(text))
+        return send_text_message_dedup(dest_id, format_outgoing_message(text), source="mirror:text")
 
     if mt == "extendedTextMessage":
         raw = (md.get("extendedTextMessageData") or {}).get("text", "")
         text = _maybe_strip_links(raw)
         if not text:
             return True
-        return send_text_message(dest_id, format_outgoing_message(text))
+        return send_text_message_dedup(dest_id, format_outgoing_message(text), source="mirror:extended")
 
     file_data = md.get("fileMessageData")
     if not file_data and mt == "imageMessage":
@@ -371,7 +385,7 @@ def mirror_message_as_new(body: dict, dest_id: str) -> bool:
         if not ok:
             return False
         location_note = "📍 Shared location"
-        return send_text_message(dest_id, format_outgoing_message(location_note))
+        return send_text_message_dedup(dest_id, format_outgoing_message(location_note), source="mirror:location")
 
     if mt == "contactMessage":
         c = md.get("contactMessageData") or {}
@@ -380,7 +394,7 @@ def mirror_message_as_new(body: dict, dest_id: str) -> bool:
             return False
         name = (c.get("displayName") or "").strip()
         contact_note = f"👤 Contact shared: {name}" if name else "👤 Contact shared"
-        return send_text_message(dest_id, format_outgoing_message(contact_note))
+        return send_text_message_dedup(dest_id, format_outgoing_message(contact_note), source="mirror:contact")
 
     print(
         f"  [Mirror] Unsupported typeMessage={mt!r} — "

@@ -185,7 +185,11 @@ class MessageSchedulerService:
                     if not self._due(schedule, now_local):
                         continue
                     message = format_outgoing_message(schedule.message_body)
-                    sent = self.send_text_callable(self.destination_chat_id, message)
+                    sent = self.send_text_callable(
+                        self.destination_chat_id,
+                        message,
+                        source=f"schedule:{schedule.id}",
+                    )
                     if sent:
                         self.store.mark_sent_today(schedule.id, today_iso)
                         print(f"  [Scheduler] sent '{schedule.title}' at {schedule.time_of_day}")

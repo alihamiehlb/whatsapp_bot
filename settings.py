@@ -14,6 +14,16 @@ def _get_bool(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _get_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
 # ---- Green API Credentials ----
 API_URL = os.getenv("API_URL", "https://api.green-api.com").rstrip("/")
 INSTANCE_ID = os.getenv("INSTANCE_ID", "")
@@ -30,6 +40,8 @@ GROUP_LINK_URL = os.getenv("GROUP_LINK_URL", "")
 MIRROR_DEBUG = _get_bool("MIRROR_DEBUG", True)
 STRIP_LINKS_FROM_TEXT = _get_bool("STRIP_LINKS_FROM_TEXT", True)
 APPEND_GROUP_LINK_TO_MESSAGES = _get_bool("APPEND_GROUP_LINK_TO_MESSAGES", True)
+ENABLE_OUTGOING_DEDUP = _get_bool("ENABLE_OUTGOING_DEDUP", True)
+DEDUPE_WINDOW_SECONDS = _get_int("DEDUPE_WINDOW_SECONDS", 10800)
 SCHEDULE_TIMEZONE = os.getenv("SCHEDULE_TIMEZONE", "Asia/Beirut")
 SCHEDULE_DB_PATH = os.getenv("SCHEDULE_DB_PATH", "data/schedules.db")
 

@@ -10,7 +10,7 @@ import sys
 import threading
 
 import settings as config
-from bot.forwarder import init_green_api, monitor_loop, send_text_message
+from bot.forwarder import init_green_api, monitor_loop, send_text_message_dedup
 from bot.scheduled_messages import MessageSchedulerService, ScheduleStore
 from web.panel import create_panel_app
 
@@ -33,7 +33,7 @@ def main():
 
     print("[2/3] Starting mirror and scheduler workers …")
     store = ScheduleStore(config.SCHEDULE_DB_PATH)
-    scheduler = MessageSchedulerService(store, dest_id, send_text_message)
+    scheduler = MessageSchedulerService(store, dest_id, send_text_message_dedup)
 
     mirror_thread = threading.Thread(
         target=monitor_loop,
@@ -50,7 +50,7 @@ def main():
     scheduler_thread.start()
 
     print("[3/3] Starting admin panel web server …\n")
-    app = create_panel_app(store, dest_id, send_text_message)
+    app = create_panel_app(store, dest_id, send_text_message_dedup)
     port = int(os.getenv("PORT", "8080"))
     try:
         app.run(host="0.0.0.0", port=port)

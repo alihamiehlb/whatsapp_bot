@@ -168,7 +168,11 @@ def create_panel_app(store, destination_chat_id: str, send_text_callable):
         schedule = store.get_by_id(schedule_id)
         if schedule is None:
             return redirect(url_for("dashboard", flash="Schedule not found."))
-        sent = send_text_callable(destination_chat_id, format_outgoing_message(schedule.message_body))
+        sent = send_text_callable(
+            destination_chat_id,
+            format_outgoing_message(schedule.message_body),
+            source=f"panel-send-now:{schedule.id}",
+        )
         if sent:
             return redirect(url_for("dashboard", flash="Message sent now."))
         return redirect(url_for("dashboard", flash="Send failed, check bot logs."))
