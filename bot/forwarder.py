@@ -11,7 +11,7 @@ from collections import deque
 
 import requests
 import settings as config
-from bot.dedupe import should_send_outgoing_text
+from bot.dedupe import forget_outgoing_text, should_send_outgoing_text
 
 _MAX_SEEN_IDS = 5000
 _seen_order: deque[str] = deque()
@@ -230,7 +230,36 @@ def init_green_api():
     if dest_id:
         print(f"  Resolved destination chat id: {dest_id}")
 
+    _validate_mirror_chats(src_id, dest_id)
+
     return src_id, dest_id
+
+
+def _validate_mirror_chats(src_id: str, dest_id: str) -> None:
+    """Resolve names from getChats and warn on common misconfiguration."""
+    if not src_id or not dest_id:
+        return
+    ns = _normalize_chat_id(src_id)
+    nd = _normalize_chat_id(dest_id)
+    if ns == nd:
+        print("  [ERROR] Source and destination chat ids are identical — fix env vars.")
+
+    chats = get_chats()
+    by_id: dict[str, str] = {}
+    for c in chats:
+        if not isinstance(c, dict):
+            continue
+        cid = _normalize_chat_id(_chat_row_id(c))
+        if cid:
+            by_id[cid] = str(c.get("name") or "")
+
+    s_name = by_id.get(ns, "")
+    d_name = by_id.get(nd, "")
+    print(f"  Validate source:      {ns} → {s_name!r}" if s_name else f"  Validate source:      {ns} → (not listed in getChats)")
+    print(f"  Validate destination: {nd} → {d_name!r}" if d_name else f"  Validate destination: {nd} → (not listed in getChats)")
+
+    if nd.endswith("@c.us"):
+        print("  [WARNING] Destination is @c.us (private chat). For a WhatsApp group use an id ending in @g.us.")
 
 
 # ============================================================
@@ -266,23 +295,23 @@ def send_text_message(chat_id: str, text: str) -> bool:
         return False
 
 
-def send_text_message_dedup(chat_id: str, text: str, source: str = "") -> bool:
+def send_text_message_dedup(chat_id: str, text: str, source: str = "") -> bool | None:
+    """Return True if sent, False if API error, None if skipped as duplicate."""
     payload = (text or "").strip()
     if not payload:
         return True
-    # Scheduled/panel posts use dedupe; mirrored traffic must not be dropped when
-    # text matches a preset or a repeated message in the source window.
-    if source.startswith("mirror:"):
-        return send_text_message(chat_id, payload)
     if not getattr(config, "ENABLE_OUTGOING_DEDUP", True):
         return send_text_message(chat_id, payload)
     if not should_send_outgoing_text(payload):
         if source:
-            print(f"  [Dedupe] skipped duplicate message from {source}.")
+            print(f"  [Dedupe] skipped duplicate outgoing text from {source}.")
         else:
-            print("  [Dedupe] skipped duplicate message.")
-        return True
-    return send_text_message(chat_id, payload)
+            print("  [Dedupe] skipped duplicate outgoing text.")
+        return None
+    ok = send_text_message(chat_id, payload)
+    if not ok:
+        forget_outgoing_text(payload)
+    return ok
 
 
 def send_location(
@@ -391,7 +420,7 @@ def delete_notification(receipt_id: int) -> bool:
 # 4. Mirror by re-sending (no "Forwarded" label)
 # ============================================================
 
-def mirror_message_as_new(body: dict, dest_id: str) -> bool:
+def mirror_message_as_new(body: dict, dest_id: str) -> bool | None:
     md = body.get("messageData") or {}
     mt = md.get("typeMessage", "")
 
@@ -487,10 +516,13 @@ def process_notification(notification: dict, src_id: str, dest_id: str) -> None:
     mt = md.get("typeMessage", "?")
     print(f"\n  *** Mirror as new send ({mt}) id={msg_id[:16]}… ***")
 
-    if mirror_message_as_new(body, dest_id):
+    outcome = mirror_message_as_new(body, dest_id)
+    if outcome is True:
         print("  Sent OK.\n")
-    else:
+    elif outcome is False:
         print("  Send failed.\n")
+    else:
+        print("  Skipped (duplicate text vs recent schedule/mirror within window).\n")
 
 
 # ============================================================

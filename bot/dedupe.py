@@ -45,9 +45,18 @@ class OutgoingDeduplicator:
             self._seen_at[key] = now
             return True
 
+    def forget(self, text: str) -> None:
+        key = self._fingerprint(text)
+        with self._lock:
+            self._seen_at.pop(key, None)
+
 
 _dedupe = OutgoingDeduplicator(getattr(config, "DEDUPE_WINDOW_SECONDS", 10800))
 
 
 def should_send_outgoing_text(text: str) -> bool:
     return _dedupe.should_send(text)
+
+
+def forget_outgoing_text(text: str) -> None:
+    _dedupe.forget(text)

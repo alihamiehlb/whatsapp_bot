@@ -538,8 +538,15 @@ def create_panel_app(store, destination_chat_id: str, send_text_callable):
             format_outgoing_message(schedule.message_body),
             source=f"panel-send-now:{schedule.id}",
         )
-        if sent:
+        if sent is True:
             return redirect(url_for("dashboard", flash="Message sent now."))
+        if sent is None:
+            return redirect(
+                url_for(
+                    "dashboard",
+                    flash="Skipped: same text was already sent recently (dedupe).",
+                )
+            )
         return redirect(url_for("dashboard", flash="Send failed, check bot logs."))
 
     return app

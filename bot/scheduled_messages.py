@@ -190,9 +190,15 @@ class MessageSchedulerService:
                         message,
                         source=f"schedule:{schedule.id}",
                     )
-                    if sent:
+                    if sent is not False:
                         self.store.mark_sent_today(schedule.id, today_iso)
-                        print(f"  [Scheduler] sent '{schedule.title}' at {schedule.time_of_day}")
+                        if sent is None:
+                            print(
+                                f"  [Scheduler] skipped duplicate for '{schedule.title}' "
+                                f"at {schedule.time_of_day} (dedupe window)"
+                            )
+                        else:
+                            print(f"  [Scheduler] sent '{schedule.title}' at {schedule.time_of_day}")
                 time.sleep(15)
             except Exception as exc:
                 print(f"  [Scheduler] unexpected error: {exc}")
