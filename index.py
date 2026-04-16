@@ -13,6 +13,7 @@ import threading
 import settings as config
 from bot.forwarder import init_green_api, monitor_loop, send_text_message_dedup
 from bot.scheduled_messages import MessageSchedulerService, ScheduleStore
+from waitress import serve
 from web.panel import create_panel_app
 
 
@@ -94,8 +95,9 @@ def main():
     lan_ip = _best_lan_ip()
     print(f"Panel local URL:  http://127.0.0.1:{port}/")
     print(f"Panel LAN URL:    http://{lan_ip}:{port}/")
+    print("Serving panel with Waitress (production WSGI).\n")
     try:
-        app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=False)
+        serve(app, host="0.0.0.0", port=port, threads=8)
     except KeyboardInterrupt:
         print("\n\nStopped.")
     finally:
